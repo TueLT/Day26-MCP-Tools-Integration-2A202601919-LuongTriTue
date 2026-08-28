@@ -9,10 +9,23 @@ Cách chạy:
     python weather_function_calling.py
 """
 
+import os
+import sys
+from pathlib import Path
+
 from google import genai
 from google.genai import types
+from dotenv import load_dotenv
 
-client = genai.Client()
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
+
+api_key = os.getenv("GEMINI_API_KEY")
+if not api_key:
+    raise SystemExit(
+        "Chưa có GEMINI_API_KEY. Hãy mở file .env ở thư mục gốc và dán key sau dấu =."
+    )
+
+client = genai.Client(api_key=api_key)
 
 MODEL = "gemini-2.5-flash"
 
@@ -118,6 +131,8 @@ def run(prompt: str) -> str:
 
 
 if __name__ == "__main__":
+    # Tránh UnicodeEncodeError trên Windows PowerShell 5.1 (cp1252).
+    sys.stdout.reconfigure(encoding="utf-8")
     question = "Thời tiết Hà Nội và Đà Nẵng hôm nay thế nào?"
     print(f"User: {question}\n")
     print("Trả lời:", run(question))

@@ -29,6 +29,45 @@ day26-mcp/
 
 ## Quick start
 
+### Windows PowerShell 5.1+
+
+Chạy từ thư mục gốc của repo. Không cần activate virtual environment:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r .\requirements.txt
+
+# MCP demo (không cần API key)
+.\.venv\Scripts\python.exe .\02-mcp-basics\weather_client.py
+
+# Function Calling (dán key vào GEMINI_API_KEY trong file .env trước)
+.\.venv\Scripts\python.exe .\01-function-calling\weather_function_calling.py
+
+# Production — Tool Registry và Versioning
+.\.venv\Scripts\python.exe .\03-production\registry_client.py
+.\.venv\Scripts\python.exe .\03-production\versioned_client.py
+```
+
+Auth cần hai cửa sổ PowerShell. Chạy server ở cửa sổ thứ nhất:
+
+```powershell
+.\.venv\Scripts\python.exe .\03-production\auth_server.py
+```
+
+Sau đó chạy client ở cửa sổ thứ hai:
+
+```powershell
+.\.venv\Scripts\python.exe .\03-production\auth_client.py
+```
+
+Có thể chuẩn bị tự động cả bài 01–03 và lab 04 bằng:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\setup.ps1 -IncludeLab
+```
+
+### macOS/Linux
+
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt

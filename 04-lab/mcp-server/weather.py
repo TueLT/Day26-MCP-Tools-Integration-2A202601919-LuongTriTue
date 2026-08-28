@@ -2,7 +2,11 @@ from typing import Any
 import asyncio
 import httpx
 import os
+import sys
 from mcp.server.fastmcp import FastMCP
+
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8")
 
 # Initialize FastMCP server
 port = int(os.getenv("PORT", 8085))
@@ -19,7 +23,10 @@ async def make_weather_request(endpoint: str, params: dict[str, str]) -> dict[st
     """Make a request to the WeatherAPI with proper error handling."""
     # Check if API key is set
     if not API_KEY:
-        print("ERROR: WeatherAPI key not set. Please set WEATHERAPI_KEY environment variable.")
+        print(
+            "ERROR: WeatherAPI key not set. Please set WEATHERAPI_KEY environment variable.",
+            file=sys.stderr,
+        )
         return None
         
     headers = {
@@ -36,13 +43,13 @@ async def make_weather_request(endpoint: str, params: dict[str, str]) -> dict[st
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as e:
-            print(f"HTTP Error {e.response.status_code}: {e.response.text}")
+            print(f"HTTP Error {e.response.status_code}: {e.response.text}", file=sys.stderr)
             return None
         except httpx.RequestError as e:
-            print(f"Request Error: {e}")
+            print(f"Request Error: {e}", file=sys.stderr)
             return None
         except Exception as e:
-            print(f"Unexpected error: {e}")
+            print(f"Unexpected error: {e}", file=sys.stderr)
             return None
 
 @mcp.tool()
@@ -135,17 +142,15 @@ async def health_check() -> str:
     """Health check endpoint for deployment verification."""
     return "✅ Weather MCP Server is running! Ready to provide weather data for Australian cities and worldwide."
 
-print("✅ MCP server initialized with Streamable HTTP transport")
-print("🔧 Available tools: get_current_weather, get_forecast, health_check")
+print("✅ MCP server initialized with Streamable HTTP transport", file=sys.stderr)
+print("🔧 Available tools: get_current_weather, get_forecast, health_check", file=sys.stderr)
 
 if __name__ == "__main__":
-    import sys
-    
     is_cloud_run = bool(os.getenv("PORT"))
     is_standalone = len(sys.argv) == 1 and sys.stdin.isatty()
     
     if is_cloud_run or is_standalone:
-        print(f"🚀 Starting MCP server on http://0.0.0.0:{port}/mcp")
+        print(f"🚀 Starting MCP server on http://0.0.0.0:{port}/mcp", file=sys.stderr)
         mcp.run(transport="streamable-http")
     else:
         print("Starting FastMCP server in stdio mode for local client", file=sys.stderr)

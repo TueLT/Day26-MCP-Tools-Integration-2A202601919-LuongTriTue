@@ -28,7 +28,7 @@ Server chạy qua **Streamable HTTP** thay vì stdio, kèm bearer token verifica
 ```bash
 # Terminal 1 — khởi động server
 python auth_server.py
-# Server lắng nghe tại http://localhost:8000/mcp
+# Server lắng nghe tại http://127.0.0.1:8000/mcp
 
 # Terminal 2 — client kết nối kèm token
 python auth_client.py

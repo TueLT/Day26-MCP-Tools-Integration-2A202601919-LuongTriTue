@@ -7,7 +7,7 @@ A weather agent built with Google ADK that connects to an MCP server via Streama
 ```
 ┌─────────────────┐   Streamable HTTP    ┌─────────────────┐      REST       ┌─────────────────┐
 │   ADK Agent     │ ──────────────────── │   MCP Server    │ ─────────────── │  WeatherAPI.com │
-│  (mcp-client)   │   localhost:8085/mcp │  (mcp-server)   │                 │                 │
+│  (mcp-client)   │  127.0.0.1:8085/mcp │  (mcp-server)   │                 │                 │
 └─────────────────┘                      └─────────────────┘                 └─────────────────┘
 ```
 
@@ -26,7 +26,7 @@ ADK (Agent Development Kit) đóng vai trò **MCP Client**
 ┌─────────────────────────────────────────────────────────────────┐
 │                                                                 │
 │  1. KẾT NỐI tới MCP Server qua Streamable HTTP                  │
-│     StreamableHTTPConnectionParams(url="localhost:8085/mcp")    │
+│     StreamableHTTPConnectionParams(url="127.0.0.1:8085/mcp")    │
 │                                                                 │
 │  2. KHÁM PHÁ tools tự động (list_tools)                         │
 │     McpToolset → tự hỏi server "anh có tool gì?"                │
@@ -50,6 +50,20 @@ So với bài 02 (viết client thủ công bằng `mcp.ClientSession`), ADK gi�
 
 ## Setup
 
+Các lệnh Bash/macOS nằm bên dưới. Với Windows PowerShell, sau khi đã chạy
+`setup.ps1 -IncludeLab` ở thư mục gốc, dùng hai cửa sổ PowerShell:
+
+```powershell
+# Terminal 1 — MCP server
+& .\04-lab\mcp-server\start_server.ps1
+
+# Terminal 2 — ADK client (tự đọc GEMINI_API_KEY từ .env ở thư mục gốc)
+& .\04-lab\mcp-client\start_agent.ps1
+```
+
+Mở `http://localhost:8000` để chat. `health_check` không cần WeatherAPI key;
+`get_current_weather` và `get_forecast` cần điền `WEATHERAPI_KEY` trong `.env` gốc.
+
 ### 1. MCP Server
 
 ```bash
@@ -63,7 +77,7 @@ export WEATHERAPI_KEY="your_weatherapi_key"
 uv run python weather.py
 ```
 
-The server will be available at `http://localhost:8085/mcp`.
+The server will be available at `http://127.0.0.1:8085/mcp`.
 
 ### 2. ADK Agent (Client)
 
@@ -84,6 +98,7 @@ Open http://localhost:8000 in your browser, select `weather_agent`, and ask abou
 
 | Variable | Where | Description |
 |----------|-------|-------------|
-| `WEATHERAPI_KEY` | mcp-server | API key from weatherapi.com |
-| `GOOGLE_API_KEY` | mcp-client/.env | Gemini API key |
+| `WEATHERAPI_KEY` | root `.env` / server environment | API key from weatherapi.com |
+| `GEMINI_API_KEY` | root `.env` | Gemini API key used by the PowerShell launcher |
+| `GOOGLE_API_KEY` | client environment | Alternative Gemini key name for Bash/macOS |
 | `PORT` | mcp-server (env) | Override server port (default: 8085) |

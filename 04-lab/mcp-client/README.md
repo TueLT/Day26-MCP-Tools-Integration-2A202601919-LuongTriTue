@@ -36,44 +36,27 @@ AI agent built with **Google Agent Development Kit (ADK)** that uses tools from 
 
 ## Quick Start
 
-### 1. Start the MCP Server
+From the repository root on Windows PowerShell:
 
-```bash
-cd ../mcp-server
-export WEATHERAPI_KEY="your_weatherapi_key"
-uv run python weather.py
+```powershell
+# One-time setup
+powershell -ExecutionPolicy Bypass -File .\setup.ps1 -IncludeLab
+
+# Terminal 1 — MCP server
+& .\04-lab\mcp-server\start_server.ps1
+
+# Terminal 2 — ADK web UI
+& .\04-lab\mcp-client\start_agent.ps1
 ```
 
-### 2. Setup Environment
+Open http://localhost:8000 and select `weather_agent`.
 
-```bash
-cd mcp-client
+The launchers read the root `.env`. `GEMINI_API_KEY` is required for the
+agent. `WEATHERAPI_KEY` is required only for real weather/forecast calls;
+`health_check` works without it.
 
-# Create .env file with your Google API key
-# Get free key from: https://aistudio.google.com/apikey
-echo "GOOGLE_API_KEY=your_google_api_key_here" > .env
-```
-
-### 3. Install Dependencies
-
-```bash
-uv sync
-```
-
-### 4. Run the Agent
-
-```bash
-uv run adk web
-```
-
-### 5. Use the Agent
-
-1. Open browser: http://localhost:8000
-2. Select `weather_agent` from dropdown
-3. Ask questions like:
-   - "What's the weather in Brisbane?"
-   - "Give me a 3-day forecast for Tokyo"
-   - "How's the weather in New York?"
+For Bash/macOS, set `GOOGLE_API_KEY` and `WEATHERAPI_KEY`, then run the
+server and `uv run adk web` from their respective directories.
 
 ## Project Structure
 
@@ -83,7 +66,7 @@ mcp-client/
 │   ├── agent.py           # Main agent with MCP connection
 │   └── __init__.py
 ├── pyproject.toml
-├── .env                   # Environment variables (create this)
+├── start_agent.ps1        # Windows launcher; loads root .env before ADK
 └── README.md
 ```
 
@@ -94,7 +77,7 @@ mcp-client/
 In `weather_agent/agent.py`:
 
 ```python
-MCP_SERVER_URL = "http://localhost:8085/mcp"
+MCP_SERVER_URL = "http://127.0.0.1:8085/mcp"
 
 connection_params = StreamableHTTPConnectionParams(
     url=MCP_SERVER_URL,
@@ -117,22 +100,20 @@ root_agent = Agent(
    - Check `MCP_SERVER_URL` in `agent.py`
 
 2. **405 errors**: Port conflict with another application
-   - Check what's running on the port: `lsof -i :8085`
+   - Windows: `netstat -ano | findstr :8085`
+   - macOS/Linux: `lsof -i :8085`
    - Change port in both server and client if needed
 
 3. **Timeout errors**: Server not started
    - Start the MCP server first, then the ADK client
 
-### Fallback Mode
-
-If MCP connection fails, the agent runs in fallback mode without tools.
-Fix the connection and restart ADK web.
-
 ## Environment Variables
 
-Create `.env` file:
-```bash
-GOOGLE_API_KEY=your_gemini_api_key
+Root `.env`:
+
+```dotenv
+GEMINI_API_KEY=your_gemini_api_key
+WEATHERAPI_KEY=your_weatherapi_key
 ```
 
 ## Resources

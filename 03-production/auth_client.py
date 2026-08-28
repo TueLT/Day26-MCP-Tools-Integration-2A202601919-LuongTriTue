@@ -12,14 +12,16 @@ Cách chạy (cần auth_server.py đang chạy ở terminal khác):
 from __future__ import annotations
 
 import asyncio
+import os
+import sys
 
 import httpx
 
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 
-SERVER_URL = "http://localhost:8000/mcp"
-TOKEN = "dev-token-abc123"
+SERVER_URL = os.environ.get("MCP_SERVER_URL", "http://127.0.0.1:8000/mcp")
+TOKEN = os.environ.get("MCP_AUTH_TOKEN", "dev-token-abc123")
 
 
 async def main() -> None:
@@ -45,4 +47,6 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
+    # Tránh UnicodeEncodeError trên Windows PowerShell 5.1 (cp1252).
+    sys.stdout.reconfigure(encoding="utf-8")
     asyncio.run(main())
