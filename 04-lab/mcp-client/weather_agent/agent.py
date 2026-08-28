@@ -12,7 +12,7 @@ if hasattr(sys.stderr, "reconfigure"):
 
 # Dùng chung Gemini key trong .env ở thư mục gốc của repo.
 repo_env = Path(__file__).resolve().parents[3] / ".env"
-load_dotenv(repo_env)
+load_dotenv(repo_env, override=True)
 gemini_api_key = os.getenv("GEMINI_API_KEY")
 if gemini_api_key:
     # ADK đọc GOOGLE_API_KEY; key trong repo phải ưu tiên hơn key cũ của máy.
@@ -34,42 +34,28 @@ MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "http://127.0.0.1:8085/mcp")
 logger.info("Initializing weather agent with remote MCP server")
 logger.info("MCP Server: %s", MCP_SERVER_URL)
 
-try:
-    # Create connection parameters for the remote MCP server
-    connection_params = StreamableHTTPConnectionParams(
-        url=MCP_SERVER_URL,
-        timeout=30.0,  # Increased timeout for Cloud Run cold starts
-    )
-    
-    # The connection is opened lazily when ADK first uses the toolset.
-    logger.info("Configuring MCP toolset...")
-    weather_tools = McpToolset(
-        connection_params=connection_params,
-    )
-    logger.info("MCP toolset created successfully")
-    
-    # Create the agent with remote MCP tools
-    root_agent = Agent(
-        name="weather_agent",
-        model="gemini-2.5-flash",
-        tools=[weather_tools],
-    )
-    logger.info("Weather agent initialized with remote MCP tools:")
-    logger.info("   - get_current_weather(city)")
-    logger.info("   - get_forecast(city, days)")
-    logger.info("   - health_check()")
-    logger.info("MCP toolset ready; connection will open when a tool is used.")
-    
-except Exception as e:
-    logger.error("Failed to configure remote MCP server: %s", e)
-    logger.error(f"   Server URL: {MCP_SERVER_URL}")
-    import traceback
-    traceback.print_exc()
-    
-    # Create a fallback agent without tools
-    logger.warning("Creating fallback agent without MCP tools")
-    root_agent = Agent(
-        name="weather_agent",
-        model="gemini-2.5-flash",
-    )
+# The connection is opened lazily when ADK first uses the toolset.
+connection_params = StreamableHTTPConnectionParams(
+    url=MCP_SERVER_URL,
+    timeout=30.0,
+)
+
+logger.info("Configuring MCP toolset...")
+weather_tools = McpToolset(connection_params=connection_params)
+
+root_agent = Agent(
+    name="weather_agent",
+    model="gemini-2.5-flash",
+    description="Answers weather questions using tools from the MCP weather server.",
+    instruction=(
+        "Use the MCP weather tools for weather, forecast, and server-health questions. "
+        "Do not invent weather data when a tool reports an error."
+    ),
+    tools=[weather_tools],
+)
+
+logger.info("Weather agent initialized with MCP tools:")
+logger.info("   - get_current_weather(city)")
+logger.info("   - get_forecast(city, days)")
+logger.info("   - health_check()")
 

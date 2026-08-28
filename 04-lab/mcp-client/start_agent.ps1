@@ -2,6 +2,8 @@
 param(
     [ValidateSet("Web", "Run")]
     [string]$Mode = "Web",
+    [ValidateRange(1, 65535)]
+    [int]$WebPort = 8000,
     [string]$Query = "Hãy gọi health_check và cho biết MCP server có hoạt động không."
 )
 
@@ -35,7 +37,7 @@ $env:PYTHONUTF8 = "1"
 Push-Location -LiteralPath $PSScriptRoot
 try {
     if ($Mode -eq "Web") {
-        & $adk web
+        & $adk web --port $WebPort
     }
     else {
         & $adk run --in_memory --jsonl --timeout 60s .\weather_agent $Query

@@ -63,6 +63,25 @@ Các lệnh Bash/macOS nằm bên dưới. Với Windows PowerShell, sau khi đ�
 
 Mở `http://localhost:8000` để chat. `health_check` không cần WeatherAPI key;
 `get_current_weather` và `get_forecast` cần điền `WEATHERAPI_KEY` trong `.env` gốc.
+Nếu cổng 8000 đang được ứng dụng khác sử dụng, chạy client bằng
+`& .\04-lab\mcp-client\start_agent.ps1 -WebPort 8002` rồi mở
+`http://localhost:8002`.
+
+Để kiểm tra bài lab, giữ MCP server đang chạy rồi mở terminal thứ ba:
+
+```powershell
+& .\04-lab\mcp-client\.venv\Scripts\python.exe .\04-lab\mcp-client\verify_setup.py
+& .\04-lab\mcp-server\.venv\Scripts\python.exe -m unittest .\04-lab\test_weather_tools.py -v
+
+# End-to-end: Gemini -> ADK -> MCP -> WeatherAPI
+& .\04-lab\mcp-client\start_agent.ps1 -Mode Run -Query "Thời tiết Hà Nội hiện tại thế nào?"
+```
+
+Các prompt demo đề xuất:
+
+- `Kiểm tra MCP server có hoạt động không.`
+- `Thời tiết hiện tại ở Hà Nội thế nào?`
+- `Cho tôi dự báo thời tiết Hà Nội 3 ngày tới.`
 
 ### 1. MCP Server
 

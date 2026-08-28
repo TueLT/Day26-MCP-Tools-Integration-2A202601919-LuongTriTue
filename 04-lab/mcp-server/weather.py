@@ -1,12 +1,18 @@
 from typing import Any
 import asyncio
 import httpx
+import logging
 import os
 import sys
 from mcp.server.fastmcp import FastMCP
 
 if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8")
+
+# WeatherAPI authenticates through a query parameter. Prevent HTTP client logs
+# from printing request URLs (and therefore the API key) at INFO level.
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 # Initialize FastMCP server
 port = int(os.getenv("PORT", 8085))
@@ -18,6 +24,15 @@ USER_AGENT = "weather-app/1.0"
 
 # Get API key from environment variable
 API_KEY = os.getenv("WEATHERAPI_KEY")
+
+
+def format_location(location: dict[str, Any]) -> str:
+    """Join non-empty location components without duplicate commas."""
+    return ", ".join(
+        str(location.get(field, "")).strip()
+        for field in ("name", "region", "country")
+        if str(location.get(field, "")).strip()
+    )
 
 async def make_weather_request(endpoint: str, params: dict[str, str]) -> dict[str, Any] | None:
     """Make a request to the WeatherAPI with proper error handling."""
@@ -75,7 +90,7 @@ async def get_current_weather(city: str) -> str:
     location = data["location"]
     
     return f"""
-Current Weather for {location['name']}, {location['region']}, {location['country']}:
+Current Weather for {format_location(location)}:
 
 Temperature: {current['temp_c']}°C ({current['temp_f']}°F)
 Feels like: {current['feelslike_c']}°C ({current['feelslike_f']}°F)
@@ -97,8 +112,8 @@ async def get_forecast(city: str, days: int = 3) -> str:
         city: City name (e.g., "Hanoi", "Haiphong", "Danang", "Brisbane", "Sydney", "Melbourne")
         days: Number of days to forecast (1-3 for free tier, max 10 for paid)
     """
-    # Limit days to 3 for free tier
-    days = min(days, 3)
+    # WeatherAPI's free tier supports 1-3 forecast days.
+    days = max(1, min(days, 3))
     
     params = {
         "q": city,
@@ -118,7 +133,7 @@ async def get_forecast(city: str, days: int = 3) -> str:
     forecast_days = data["forecast"]["forecastday"]
     
     forecasts = []
-    forecasts.append(f"Weather Forecast for {location['name']}, {location['region']}, {location['country']}:")
+    forecasts.append(f"Weather Forecast for {format_location(location)}:")
     
     for day in forecast_days:
         day_data = day["day"]

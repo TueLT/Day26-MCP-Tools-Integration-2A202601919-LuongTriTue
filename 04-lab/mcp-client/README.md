@@ -50,10 +50,20 @@ powershell -ExecutionPolicy Bypass -File .\setup.ps1 -IncludeLab
 ```
 
 Open http://localhost:8000 and select `weather_agent`.
+If port 8000 is already in use, run
+`& .\04-lab\mcp-client\start_agent.ps1 -WebPort 8002` and open port 8002 instead.
 
 The launchers read the root `.env`. `GEMINI_API_KEY` is required for the
 agent. `WEATHERAPI_KEY` is required only for real weather/forecast calls;
 `health_check` works without it.
+
+With the MCP server still running, verify the complete setup from the repository root:
+
+```powershell
+& .\04-lab\mcp-client\.venv\Scripts\python.exe .\04-lab\mcp-client\verify_setup.py
+& .\04-lab\mcp-server\.venv\Scripts\python.exe -m unittest .\04-lab\test_weather_tools.py -v
+& .\04-lab\mcp-client\start_agent.ps1 -Mode Run -Query "Thời tiết Hà Nội hiện tại thế nào?"
+```
 
 For Bash/macOS, set `GOOGLE_API_KEY` and `WEATHERAPI_KEY`, then run the
 server and `uv run adk web` from their respective directories.

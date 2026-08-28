@@ -3,30 +3,45 @@
 Verification script for Weather Agent setup
 Checks if all components are configured correctly
 """
+import asyncio
 import os
 import sys
 from pathlib import Path
+
+CLIENT_DIR = Path(__file__).resolve().parent
+ROOT_ENV = CLIENT_DIR.parents[1] / ".env"
+EXPECTED_TOOLS = {"get_current_weather", "get_forecast", "health_check"}
+
+
+def get_mcp_server_url() -> str:
+    return os.getenv("MCP_SERVER_URL", "http://127.0.0.1:8085/mcp")
+
 
 def check_environment():
     """Check if .env file exists and is configured"""
     print("🔍 Checking environment configuration...")
     
-    env_file = Path(__file__).resolve().parents[2] / ".env"
-    if not env_file.exists():
-        print(f"❌ .env file not found: {env_file}")
+    if not ROOT_ENV.exists():
+        print(f"❌ .env file not found: {ROOT_ENV}")
         return False
     
-    # Check if GOOGLE_API_KEY is set
+    # Load the repository configuration without printing secret values.
     from dotenv import load_dotenv
-    load_dotenv(env_file)
+    load_dotenv(ROOT_ENV, override=True)
     
-    api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
-    if not api_key or api_key == "your_google_api_key_here":
+    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    weather_api_key = os.getenv("WEATHERAPI_KEY")
+    if not api_key or api_key.startswith("your_"):
         print("❌ GEMINI_API_KEY/GOOGLE_API_KEY not configured in root .env")
         print("   Get key from: https://aistudio.google.com/apikey")
         return False
-    
+    if not weather_api_key or weather_api_key.startswith("your_"):
+        print("❌ WEATHERAPI_KEY not configured in root .env")
+        print("   Get key from: https://www.weatherapi.com/")
+        return False
+
     print("✅ Gemini API key configured")
+    print("✅ WeatherAPI key configured")
     return True
 
 def check_dependencies():
@@ -68,7 +83,7 @@ def check_agent_structure():
     
     all_exist = True
     for file_path in required_files:
-        path = Path(file_path)
+        path = CLIENT_DIR / file_path
         if path.exists():
             print(f"✅ {file_path}")
         else:
@@ -78,31 +93,56 @@ def check_agent_structure():
     return all_exist
 
 def check_mcp_server():
-    """Check if MCP server is accessible"""
-    print("\n🔍 Checking MCP server connectivity...")
-    
-    server_url = os.getenv("MCP_SERVER_URL", "http://127.0.0.1:8085/mcp")
-    
+    """Complete an MCP handshake, discover tools, and call live tools."""
+    print("\n🔍 Checking MCP server and tool discovery...")
+    server_url = get_mcp_server_url()
+
     try:
-        import httpx
-        import asyncio
-        
+        from mcp import ClientSession
+        from mcp.client.streamable_http import streamable_http_client
+
         async def test_connection():
-            async with httpx.AsyncClient() as client:
-                response = await client.get(server_url, timeout=10.0)
-                return response.status_code
-        
-        status_code = asyncio.run(test_connection())
-        
-        if status_code < 500:
-            print(f"✅ MCP server reachable at {server_url} (HTTP {status_code})")
-            return True
-        else:
-            print(f"⚠️  MCP server returned status {status_code}")
-            return False
-            
+            async with streamable_http_client(server_url) as (read, write, _):
+                async with ClientSession(read, write) as session:
+                    await session.initialize()
+                    response = await session.list_tools()
+                    tool_names = {tool.name for tool in response.tools}
+                    missing = EXPECTED_TOOLS - tool_names
+                    if missing:
+                        raise RuntimeError(f"Missing MCP tools: {', '.join(sorted(missing))}")
+
+                    health = await session.call_tool("health_check", {})
+                    if health.isError or not health.content:
+                        raise RuntimeError("health_check failed")
+
+                    current = await session.call_tool(
+                        "get_current_weather", {"city": "Hanoi"}
+                    )
+                    if current.isError or not current.content:
+                        raise RuntimeError("get_current_weather failed")
+                    weather_text = current.content[0].text
+                    error_markers = ("not configured", "Unable to fetch")
+                    if any(marker in weather_text for marker in error_markers):
+                        raise RuntimeError(weather_text)
+
+                    forecast = await session.call_tool(
+                        "get_forecast", {"city": "Hanoi", "days": 1}
+                    )
+                    if forecast.isError or not forecast.content:
+                        raise RuntimeError("get_forecast failed")
+                    forecast_text = forecast.content[0].text
+                    if any(marker in forecast_text for marker in error_markers):
+                        raise RuntimeError(forecast_text)
+
+        asyncio.run(test_connection())
+        print(f"✅ MCP handshake succeeded at {server_url}")
+        print(f"✅ Discovered tools: {', '.join(sorted(EXPECTED_TOOLS))}")
+        print("✅ health_check succeeded")
+        print("✅ get_current_weather reached WeatherAPI successfully")
+        print("✅ get_forecast reached WeatherAPI successfully")
+        return True
     except Exception as e:
-        print(f"❌ Cannot reach MCP server: {e}")
+        print(f"❌ MCP/WeatherAPI verification failed: {e}")
         return False
 
 def check_agent_import():
@@ -150,7 +190,9 @@ def main():
         return 1
 
 if __name__ == "__main__":
-    sys.stdout.reconfigure(encoding="utf-8")
-    sys.stderr.reconfigure(encoding="utf-8")
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8")
     sys.exit(main())
 
